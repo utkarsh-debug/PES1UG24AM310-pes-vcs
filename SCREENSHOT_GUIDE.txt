@@ -1,0 +1,291 @@
+========================================================================
+  PES-VCS — Screenshot Guide
+  Run these commands in order to capture all required screenshots.
+  
+  BEFORE STARTING: Set your real SRN below and export it.
+========================================================================
+
+  export PES_AUTHOR="Deeptanshu Kumar <PES1UG24AM357>"
+
+========================================================================
+STEP 0 — Clean build (run this first, before any screenshots)
+========================================================================
+
+  Command:
+    make clean && make all
+
+  What you'll see:
+    gcc compiling all .c files, linking pes, test_objects, test_tree
+    (a few harmless strncpy warnings are okay — everything links fine)
+
+  No screenshot needed for this step.
+
+
+========================================================================
+SCREENSHOT 1A — Phase 1: test_objects (all tests passing)
+========================================================================
+
+  Commands to run (in order):
+    make clean && make all
+    ./test_objects
+
+  Expected output:
+    Stored blob with hash: d58213f5...
+    Object stored at: .pes/objects/d5/8213f5...
+    PASS: blob storage
+    PASS: deduplication
+    PASS: integrity check
+
+    All Phase 1 tests passed.
+
+  Screenshot: capture the full terminal output of "./test_objects"
+
+
+========================================================================
+SCREENSHOT 1B — Phase 1: sharded directory structure
+========================================================================
+
+  Commands to run (right after Screenshot 1A, .pes is still there):
+    find .pes/objects -type f
+
+  Expected output:
+    .pes/objects/d5/8213f5dbe0629b...
+    .pes/objects/XX/YYYY...
+
+  Screenshot: capture the "find .pes/objects -type f" output showing
+              the two-level XX/YYYY shard directories
+
+
+========================================================================
+SCREENSHOT 2A — Phase 2: test_tree (all tests passing)
+========================================================================
+
+  Commands to run:
+    make clean && make all
+    ./test_tree
+
+  Expected output:
+    Serialized tree: 139 bytes
+    PASS: tree serialize/parse roundtrip
+    PASS: tree deterministic serialization
+
+    All Phase 2 tests passed.
+
+  Screenshot: capture the full terminal output of "./test_tree"
+
+
+========================================================================
+SCREENSHOT 2B — Phase 2: raw binary tree object (xxd)
+========================================================================
+
+  Commands to run (fresh start):
+    make clean && make pes
+    ./pes init
+    echo "hello" > file1.txt
+    echo "world" > file2.txt
+    ./pes add file1.txt file2.txt
+    ./pes commit -m "test tree"
+
+  Then list all objects to find a tree object:
+    find .pes/objects -type f
+
+  Run xxd on each hash until you see one starting with "74 72 65 65" (ASCII: "tree"):
+    xxd .pes/objects/XX/YYYYYYYY | head -20
+
+  Tip: blobs start with "62 6c 6f 62" (blob), commits start with "63 6f 6d 6d" (comm).
+       Keep trying hashes until you see "74 72 65 65 20" — that's a tree object.
+
+  Expected output (example):
+    00000000: 7472 6565 2032 3100 3130 3036 3434 2066  tree 21.100644 f
+    00000010: 696c 6531 2e74 7874 002c f8d8 3d9e e295  ile1.txt.,..=...
+    ...
+
+  Screenshot: capture the "xxd ... | head -20" output showing the binary format
+
+
+========================================================================
+SCREENSHOT 3A — Phase 3: pes init → pes add → pes status
+========================================================================
+
+  Commands to run (fresh start):
+    make clean && make pes
+    ./pes init
+    echo "hello" > file1.txt
+    echo "world" > file2.txt
+    ./pes add file1.txt file2.txt
+    ./pes status
+
+  Expected output:
+    Initialized empty PES repository in .pes/
+
+    Staged changes:
+      staged:     file1.txt
+      staged:     file2.txt
+
+    Unstaged changes:
+      (nothing to show)
+
+    Untracked files:
+      untracked:  ...
+
+  Screenshot: capture ALL of the above — from the "pes init" output through
+              to the bottom of "pes status"
+
+
+========================================================================
+SCREENSHOT 3B — Phase 3: .pes/index text format
+========================================================================
+
+  Commands to run (immediately after Screenshot 3A, no clean):
+    cat .pes/index
+
+  Expected output:
+    100644 2cf8d83d9ee29543b34a87727421fdecb7e3f3a183... 1699900000 6 file1.txt
+    100644 e00c50e16a2df38f8d6bf809e181ad0248da6e6719... 1699900000 6 file2.txt
+
+  Screenshot: capture the "cat .pes/index" output showing the
+              octal-mode hex-hash mtime size path format
+
+
+========================================================================
+SCREENSHOT 4A — Phase 4: pes log with three commits
+========================================================================
+
+  Commands to run (continuing from Screenshot 3B — do NOT clean):
+    ./pes commit -m "Initial commit"
+    echo "World" >> file1.txt
+    ./pes add file1.txt
+    ./pes commit -m "Add world"
+    echo "Goodbye" > bye.txt
+    ./pes add bye.txt
+    ./pes commit -m "Add farewell"
+    ./pes log
+
+  Expected output:
+    commit 3e822e...
+    Author: Deeptanshu Kumar <PESXUG24CSXXX>
+    Date:   1699900000
+
+        Add farewell
+
+    commit 73688e...
+    Author: Deeptanshu Kumar <PESXUG24CSXXX>
+    Date:   1699900000
+
+        Add world
+
+    commit 29089a...
+    Author: Deeptanshu Kumar <PESXUG24CSXXX>
+    Date:   1699900000
+
+        Initial commit
+
+  Screenshot: capture the full "pes log" output showing all 3 commits
+              with hashes, authors, dates, and messages
+
+
+========================================================================
+SCREENSHOT 4B — Phase 4: object store after three commits
+========================================================================
+
+  Commands to run (immediately after Screenshot 4A):
+    find .pes -type f | sort
+
+  Expected output:
+    .pes/HEAD
+    .pes/index
+    .pes/objects/29/089ab5...
+    .pes/objects/3e/822efa...
+    .pes/objects/73/688efb...
+    .pes/objects/XX/YYY...    (10+ objects total)
+    .pes/refs/heads/main
+
+  Screenshot: capture the sorted list showing blobs, trees, commits,
+              index, HEAD and refs all together
+
+
+========================================================================
+SCREENSHOT 4C — Phase 4: HEAD and branch reference chain
+========================================================================
+
+  Commands to run (immediately after Screenshot 4B):
+    cat .pes/HEAD
+    cat .pes/refs/heads/main
+
+  Expected output:
+    ref: refs/heads/main
+    3e822efa342e3382ccfe7495c4bfa5fac2f91a2d84c719317447221b39938739
+
+  Screenshot: capture both "cat" outputs together, showing:
+              HEAD → branch name → commit hash
+
+
+========================================================================
+SCREENSHOT FINAL — Integration test (all PASSes)
+========================================================================
+
+  Commands to run (fresh start — this test creates its own .pes):
+    make clean && make all
+    make test-integration
+
+  Expected output:
+    === PES-VCS Integration Test ===
+
+    --- Repository Initialization ---
+    Initialized empty PES repository in .pes/
+    PASS: .pes/objects exists
+    PASS: .pes/refs/heads exists
+    PASS: .pes/HEAD exists
+
+    --- Staging Files ---
+    ...
+    --- First Commit ---
+    [main XXXXXXX] Initial commit
+    ...
+    --- Full History ---
+    (3 commits listed)
+    ...
+    === All integration tests completed ===
+
+  Screenshot: capture the COMPLETE output of "make test-integration"
+              from "=== PES-VCS Integration Test ===" all the way to
+              "=== All integration tests completed ==="
+
+
+========================================================================
+SUMMARY TABLE
+========================================================================
+
+  ID       | Command(s)                              | What to show
+  ---------+-----------------------------------------+---------------------
+  1A       | ./test_objects                          | All 3 PASSes
+  1B       | find .pes/objects -type f               | Sharded XX/YYY dirs
+  2A       | ./test_tree                             | Both PASSes
+  2B       | xxd .pes/objects/XX/YYY | head -20      | Raw binary tree data
+  3A       | ./pes init + add + status               | Staged files output
+  3B       | cat .pes/index                          | Text index format
+  4A       | ./pes log (after 3 commits)             | 3 commits, full info
+  4B       | find .pes -type f | sort                | All 10+ object files
+  4C       | cat .pes/HEAD + cat .pes/refs/heads/main| The ref chain
+  Final    | make test-integration                   | All PASSes + history
+
+========================================================================
+IMPORTANT NOTES
+========================================================================
+
+  1. Replace "YourSRN" with your ACTUAL SRN in PES_AUTHOR every time:
+       export PES_AUTHOR="Deeptanshu Kumar <PESXUG24CSXXX>"
+
+  2. For Screenshots 3A → 4C, do NOT run "make clean" between them —
+     they build on top of each other (index and commits accumulate).
+
+  3. For Screenshot 2B, run "make clean && make pes" fresh, then do
+     the init/add/commit sequence shown above.
+
+  4. For Screenshot 1B, run it IMMEDIATELY after ./test_objects (before
+     any "make clean") so the .pes directory still exists.
+
+  5. For the Final screenshot, "make test-integration" calls "make clean"
+     internally — run it last so it doesn't destroy your other screenshots.
+
+========================================================================
